@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS ont (
     lineprofile INTEGER,
     tree INTEGER,
     ont_id INTEGER,
+    oid TEXT,
     sn TEXT,
     desc TEXT,
     FOREIGN KEY (lineprofile) REFERENCES profiles (id)
@@ -119,71 +120,69 @@ def parse_ont(config_text):
     ont_data = []
     port_native_vlan_data = []
     
-    # Текущий интерфейс (для определения tree)
     current_interface = None
-    
-    # Временная переменная для хранения данных о текущей ONT
     current_ont = None
     
-    # Разделение конфига на строки
     lines = config_text.strip().splitlines()
     
     for line in lines:
-        line = line.strip()  # Удаляем лишние пробелы
+        line = line.strip()
         
-        # Обработка строки с интерфейсом
         if line.startswith("interface gpon"):
             parts = line.split()
-            current_interface = int(parts[2].split('/')[1])  # Номер интерфейса (0, 1, и т.д.)
+            current_interface = int(parts[2].split('/')[1])
         
-        # Обработка строки с ont add
         elif line.startswith("ont add"):
             if current_ont:
-                # Если есть незавершенная ONT, сохраняем её
                 ont_data.append(current_ont)
                 current_ont = None
             
             parts = line.split()
-            tree = int(parts[2])  # Номер дерева
-            ont_id = int(parts[3])  # Номер ONT в дереве
-            sn = parts[5].strip('"')  # Серийный номер
+            tree = int(parts[2])
+            ont_id = int(parts[3])
+            sn = parts[5].strip('"')
+            oid = None  # Добавляем OID, даже если он не найден
             
-            # Ищем ont-lineprofile-id и desc
             lineprofile = None
             desc = None
             for i, part in enumerate(parts):
                 if part == "ont-lineprofile-id":
                     lineprofile = int(parts[i + 1])
                 elif part == "desc":
-                    desc = parts[i + 1].strip('"')
+                    desc = ' '.join(parts[i + 1:]).strip('"')
+                elif part == "oid":
+                    oid = parts[i + 1].strip('"')  # Парсим OID, если есть
             
-            if lineprofile is not None and desc is not None:
-                ont_data.append((current_interface, lineprofile, tree, ont_id, sn, desc))
-            else:
-                # Если данные не найдены, создаем временную запись
-                current_ont = (current_interface, None, tree, ont_id, sn, None)
-        
-        # Обработка строки с ont-srvprofile-id и desc
+            current_ont = (current_interface, lineprofile, tree, ont_id, oid, sn, desc)
+       
         elif line.startswith("ont-srvprofile-id"):
             if current_ont:
                 parts = line.split()
-                if "ont-lineprofile-id" in line:
+
+                # Извлекаем lineprofile, если он есть
+                if "ont-lineprofile-id" in parts:
                     lineprofile = int(parts[parts.index("ont-lineprofile-id") + 1])
-                if "desc" in line:
-                    desc = parts[parts.index("desc") + 1].strip('"')
-                # Обновляем временную запись ONT
-                current_ont = (current_ont[0], lineprofile, current_ont[2], current_ont[3], current_ont[4], desc)
+                else:
+                    lineprofile = current_ont[1]  # Оставляем старое значение
+
+                    # Извлекаем desc
+                desc = current_ont[6] if current_ont[6] else ""  # Оставляем предыдущее значение, если desc не найдено
+                if "desc" in parts:
+                    desc_index = parts.index("desc") + 1
+                    desc = ' '.join(parts[desc_index:]).strip('"')
+
+                # Обновляем кортеж и добавляем в список
+                current_ont = (current_ont[0], lineprofile, current_ont[2], current_ont[3], current_ont[4], current_ont[5], desc)
                 ont_data.append(current_ont)
                 current_ont = None
+
         
-        # Обработка строки с ont port native-vlan
         elif line.startswith("ont port native-vlan"):
             parts = line.split()
-            tree = int(parts[3])  # Номер дерева
-            ont_id = int(parts[4])  # Номер ONT в дереве
-            eth = int(parts[6])  # Номер порта
-            vlan = int(parts[8])  # VLAN
-            # Сохраняем данные для последующей обработки
+            tree = int(parts[3])
+            ont_id = int(parts[4])
+            eth = int(parts[6])
+            vlan = int(parts[8])
             port_native_vlan_data.append((current_interface, tree, ont_id, eth, vlan))
     
     return ont_data, port_native_vlan_data
@@ -234,7 +233,7 @@ conn.commit()
 
 ont_data, port_native_vlan_data = parse_ont(config_text)
 # Сохранение данных в таблицу ont
-cursor.executemany('INSERT INTO ont (interface, lineprofile, tree, ont_id, sn, desc) VALUES (?, ?, ?, ?, ?, ?)', ont_data)
+cursor.executemany('INSERT INTO ont (interface, lineprofile, tree, ont_id, oid, sn, desc) VALUES (?, ?, ?, ?, ?, ?, ?)', ont_data)
 
 # Получаем id добавленных ONT
 cursor.execute('SELECT id, interface, tree, ont_id FROM ont')
