@@ -25,23 +25,40 @@ const OntTreeView = () => {
     }, [selectedInterface]);
 
     const handleShow = () => {
+        // Отменяем все старые запросы сигналов
+        if (window.signalController) {
+            window.signalController.abort();
+        }
+
+        // Создаем новый AbortController для новых запросов
+        window.signalController = new AbortController();
+        const { signal } = window.signalController;
+
         fetch(`http://192.168.250.155:5000/api/onts?interface=${selectedInterface}&tree=${selectedTree}`)
             .then((res) => res.json())
             .then((data) => {
                 setOnts(data);
                 setSignals({});
+
+                // Получаем сигналы асинхронно
                 data.forEach((ont) => {
-                    fetch(`http://192.168.250.155:5000/signal?oid=${ont.oid}`)
+                    fetch(`http://192.168.250.155:5000/signal?oid=${ont.oid}`, { signal })
                         .then((res) => res.json())
                         .then((signalData) => {
                             setSignals((prevSignals) => ({
                                 ...prevSignals,
                                 [ont.sn]: signalData.signal,
                             }));
+                        })
+                        .catch((err) => {
+                            if (err.name !== "AbortError") {
+                                console.error("Ошибка получения сигнала:", err);
+                            }
                         });
                 });
             });
     };
+
 
     const getSignalColor = (signal) => {
         if (signal === undefined) return "#ccc"; // Серый, если нет данных
