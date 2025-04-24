@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const OntTreeView = () => {
+    const navigate = useNavigate();
     const [interfaces, setInterfaces] = useState([]);
     const [trees, setTrees] = useState([]);
     const [selectedInterface, setSelectedInterface] = useState("");
@@ -25,12 +27,10 @@ const OntTreeView = () => {
     }, [selectedInterface]);
 
     const handleShow = () => {
-        // Отменяем все старые запросы сигналов
         if (window.signalController) {
             window.signalController.abort();
         }
 
-        // Создаем новый AbortController для новых запросов
         window.signalController = new AbortController();
         const { signal } = window.signalController;
 
@@ -40,7 +40,6 @@ const OntTreeView = () => {
                 setOnts(data);
                 setSignals({});
 
-                // Получаем сигналы асинхронно
                 data.forEach((ont) => {
                     fetch(`http://192.168.250.155:5000/signal?oid=${ont.oid}`, { signal })
                         .then((res) => res.json())
@@ -59,19 +58,34 @@ const OntTreeView = () => {
             });
     };
 
-
     const getSignalColor = (signal) => {
-        if (signal === undefined) return "#ccc"; // Серый, если нет данных
+        if (signal === undefined) return "#ccc";
         if (signal > 0) return '#ccc';
-        if (signal >= -17) return 'green'; // Зеленый
-        if (signal >= -20) return 'blue'; // Желтый
+        if (signal >= -17) return 'green';
+        if (signal >= -20) return 'blue';
         if (signal >= -25) return 'orange';
-        return "red"; // Красный
+        return "red";
     };
 
     return (
         <div style={{ padding: 20, textAlign: "center" }}>
-            <h1 style={{ fontSize: "24px", marginBottom: "20px" }}>Просмотр дерева ONT</h1>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <h1 style={{ fontSize: "24px", margin: 0 }}>Просмотр дерева ONT</h1>
+                <button
+                    onClick={() => navigate("/")}
+                    style={{
+                        padding: "10px 20px",
+                        fontSize: "16px",
+                        backgroundColor: "#6c757d",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "5px",
+                        cursor: "pointer",
+                    }}
+                >
+                    На главную
+                </button>
+            </div>
 
             <select
                 value={selectedInterface}
@@ -101,11 +115,11 @@ const OntTreeView = () => {
                 style={{
                     padding: "10px 20px",
                     fontSize: "16px",
-                    backgroundColor: !selectedInterface || !selectedTree ? "#cccccc" : "#007bff", // серый, если отключена
+                    backgroundColor: !selectedInterface || !selectedTree ? "#cccccc" : "#007bff",
                     color: "white",
                     border: "none",
                     borderRadius: "5px",
-                    cursor: !selectedInterface || !selectedTree ? "not-allowed" : "pointer", // курсор "не доступен", если отключена
+                    cursor: !selectedInterface || !selectedTree ? "not-allowed" : "pointer",
                 }}
                 disabled={!selectedInterface || !selectedTree}
             >
@@ -136,7 +150,7 @@ const OntTreeView = () => {
                                     `${signals[ont.sn]} dBm`
                                 )
                             ) : (
-                                <span className="loader"></span> // Индикатор загрузки
+                                <span className="loader"></span>
                             )}
                         </span>
                     </div>

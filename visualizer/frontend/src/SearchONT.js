@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 function App() {
+    const navigate = useNavigate();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const [selectedONT, setSelectedONT] = useState(null);
     const [profileDetails, setProfileDetails] = useState(null);
 
     const getSignalColor = (signalLevel) => {
-        if (signalLevel >= -17) return 'green';    // -10 до -17
-        if (signalLevel >= -20) return 'blue';     // -17.01 до -20
-        if (signalLevel >= -25) return 'orange';   // -20.01 до -25
-        return 'red';                              // -25.01 и ниже
+        if (signalLevel >= -17) return 'green';
+        if (signalLevel >= -20) return 'blue';
+        if (signalLevel >= -25) return 'orange';
+        return 'red';
     };
 
-    // Функция поиска ONT
     const searchONT = async (q) => {
         setQuery(q);
         if (q.length < 2) return setResults([]);
@@ -22,7 +23,6 @@ function App() {
         setResults(data);
     };
 
-    // Функция для получения деталей ONT
     const fetchONTDetails = async (id) => {
         const { data } = await axios.get(`http://192.168.250.155:5000/ont/${id}`);
         setSelectedONT(data);
@@ -31,7 +31,6 @@ function App() {
         setProfileDetails(null);
     };
 
-    // Функция для получения профиля
     const fetchProfileDetails = async (profileId) => {
         const { data } = await axios.get(`http://192.168.250.155:5000/profile/${profileId}`);
         setProfileDetails(data);
@@ -39,7 +38,24 @@ function App() {
 
     return (
         <div style={{ padding: 20 }}>
-            <h1>Поиск ONT</h1>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <h1 style={{ margin: 0 }}>Поиск ONT</h1>
+                <button
+                    onClick={() => navigate("/")}
+                    style={{
+                        padding: "10px 20px",
+                        fontSize: "16px",
+                        backgroundColor: "#6c757d",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "5px",
+                        cursor: "pointer",
+                    }}
+                >
+                    На главную
+                </button>
+            </div>
+
             <input
                 type="text"
                 placeholder="Введите описание ONT..."
@@ -60,7 +76,6 @@ function App() {
             </ul>
 
             <div style={{ display: "flex", gap: "20px", marginTop: 20 }}>
-                {/* Блок Детали ONT */}
                 {selectedONT && (
                     <div
                         style={{
@@ -73,7 +88,6 @@ function App() {
                         }}
                     >
                         <h2>{selectedONT.desc}</h2>
-                        {/* Отображение уровня сигнала или "offline" */}
                         {selectedONT.signalLevel !== undefined && (
                             <p>
                                 <strong>Сигнал:</strong>{' '}
@@ -108,7 +122,6 @@ function App() {
                             </button>
                         </p>
 
-                        {/* Таблица Native VLAN */}
                         {selectedONT.vlans && selectedONT.vlans.length > 0 && (
                             <div style={{ marginTop: 20, paddingTop: 10, borderTop: "1px solid #ccc" }}>
                                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -130,7 +143,6 @@ function App() {
                             </div>
                         )}
 
-                        {/* Таблица сервисных портов */}
                         {selectedONT.servicePorts && selectedONT.servicePorts.length > 0 && (
                             <div style={{ marginTop: 20, paddingTop: 10, borderTop: "1px solid #ccc" }}>
                                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -156,7 +168,6 @@ function App() {
                     </div>
                 )}
 
-                {/* Блок Профиль */}
                 {profileDetails && (
                     <div
                         style={{
@@ -174,7 +185,6 @@ function App() {
                     >
                         <h2>{profileDetails.name}</h2>
                         <div style={{ flex: 1 }}>
-                            {/* Таблица GEM */}
                             {profileDetails.gems && (
                                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                                     <thead>
